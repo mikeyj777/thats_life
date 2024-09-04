@@ -75,11 +75,15 @@ class SimulationEngine:
                     # Any live cell with more than three live neighbours dies, as if by overpopulation.
                     # Any live cell with two or three live neighbours lives on to the next generation.
                     if neighbors < 2 or neighbors > 3:
-                        agent.state = 'dead'
+                        if isinstance(agent, int):
+                            self.agents[i, j] = Agent()
+                        self.agents[i, j].state = 'dead'
                         
                     # Any dead cell with exactly three live neighbours becomes a live cell, as if by reproduction.
                     if neighbors == 3:
-                        agent.state = 'alive'
+                        if isinstance(agent, int):
+                            self.agents[i, j] = Agent()
+                        self.agents[i, j].state = 'alive'
                         
                     
 
@@ -96,6 +100,8 @@ class SimulationEngine:
             for i in range(len(self.agents.shape[0])):
                 for j in range(len(self.agents.shape[1])):
                     agent = self.agents[i, j]
+                    if isinstance(agent, int):
+                        continue
                     ans.append({
                         'id': agent.id,
                         'position': [i, j],
