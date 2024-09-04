@@ -15,7 +15,7 @@ class Agent:
     def set_color(self):
         colors = Config.SIMULATION_PARAMS['colors']
         color = random.choice(colors)
-        color = np.array(self.color, dtype=float)
+        color = np.array(color, dtype=float)
         color /= 255
         self.color = {
             'alive': color,

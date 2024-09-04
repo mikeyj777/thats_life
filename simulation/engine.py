@@ -10,22 +10,23 @@ from config import Config
 class SimulationEngine:
     def __init__(self, bounds=(800, 800), params=None):
         self.bounds = bounds
-        self.agents = np.zeros(bounds)
+        self.agents = np.zeros(bounds, dtype=Agent)
         self.running = False
         self.params = params
         if self.params is None:
             self.params = Config.SIMULATION_PARAMS
-        self.x = max(0, self.agents.shape[0] // 2)
-        self.y = max(0, self.agents.shape[1] // 2)
+        self.x = max(0, int(self.agents.shape[0] // 2))
+        self.y = max(0, int(self.agents.shape[1] // 2))
         self.lock = threading.Lock()
 
     
 
     def initialize_agents(self, num_agents=4):
-        i = -1
+        i = 0
         while i < num_agents:
             i += 1
             self.agents[self.x, self.y] = Agent()
+            print(self.x, self.y)
             if i % 4 == 0:
                 self.x += 1
             if i % 4 == 1:
@@ -35,12 +36,13 @@ class SimulationEngine:
             if i % 4 == 3:
                 self.y -= 1
                 
+        apple = 1
 
     def update(self):
         agent:Agent
         with self.lock:
-            for i in range(len(self.agents.shape[0])):
-                for j in range(len(self.agents.shape[1])):
+            for i in range(self.agents.shape[0]):
+                for j in range(self.agents.shape[1]):
                     agent = self.agents[i, j]
                     # from https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life
                         
@@ -66,8 +68,9 @@ class SimulationEngine:
                         for j_test in j_tests:
                             if i_test == i and j_test == j:
                                 continue
-                            if self.agents[i_test, j_test].state == 'alive':
-                                neighbors += 1
+                            if isinstance(self.agents[i_test, j_test], Agent):
+                                if self.agents[i_test, j_test].state == 'alive':
+                                    neighbors += 1
                     # Any live cell with fewer than two live neighbours dies, as if by underpopulation.
                     # Any live cell with more than three live neighbours dies, as if by overpopulation.
                     # Any live cell with two or three live neighbours lives on to the next generation.
