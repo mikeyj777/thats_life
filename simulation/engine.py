@@ -27,20 +27,25 @@ class SimulationEngine:
             i += 1
             self.agents[self.x, self.y] = Agent()
             print(self.x, self.y)
+            increment = 1
             if i % 4 == 0:
-                self.x += 1
+                self.x += increment
+                if i % 8 == 0 and i > 0: 
+                    increment += 1
             if i % 4 == 1:
-                self.y += 1
+                self.y += increment
             if i % 4 == 2:
-                self.x -= 1
+                self.x -= increment
             if i % 4 == 3:
-                self.y -= 1
+                self.y -= increment
                 
         apple = 1
 
     def update(self):
         agent:Agent
         with self.lock:
+            living = 0
+            agent_count = 0
             for i in range(self.agents.shape[0]):
                 for j in range(self.agents.shape[1]):
                     agent = self.agents[i, j]
@@ -75,17 +80,22 @@ class SimulationEngine:
                     # Any live cell with more than three live neighbours dies, as if by overpopulation.
                     # Any live cell with two or three live neighbours lives on to the next generation.
                     if neighbors < 2 or neighbors > 3:
-                        if isinstance(agent, int):
-                            self.agents[i, j] = Agent()
-                        self.agents[i, j].state = 'dead'
+                        if isinstance(agent, Agent):
+                            self.agents[i, j].state = 'dead'
                         
                     # Any dead cell with exactly three live neighbours becomes a live cell, as if by reproduction.
                     if neighbors == 3:
                         if isinstance(agent, int):
                             self.agents[i, j] = Agent()
                         self.agents[i, j].state = 'alive'
-                        
                     
+                    
+                    if isinstance(agent, Agent):
+                        agent_count += 1
+                        if agent.state == 'alive':
+                            living += 1
+                        
+            print(f'living: {living} of {agent_count}')
 
     def get_state(self):
         agent:Agent
@@ -97,8 +107,8 @@ class SimulationEngine:
             # the statement below returns a list of dictionaries based on the agent properties.  this works well with a web application that can't 
             # jsonify a custom class.
             ans = []
-            for i in range(len(self.agents.shape[0])):
-                for j in range(len(self.agents.shape[1])):
+            for i in range(self.agents.shape[0]):
+                for j in range(self.agents.shape[1]):
                     agent = self.agents[i, j]
                     if isinstance(agent, int):
                         continue

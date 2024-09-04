@@ -27,8 +27,9 @@ glPointSize(10)
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Initialize Simulation Engine
-engine = SimulationEngine(bounds=display)
-engine.initialize_agents()
+agent_bounds = (100,100)
+engine = SimulationEngine(bounds=agent_bounds)
+engine.initialize_agents(num_agents=Config.SIMULATION_PARAMS['num_agents'])
 
 
 logging.info('Simulation thread started')
@@ -45,10 +46,10 @@ while engine.running:
         color = agent['color']
         state = agent['state']
         glColor3f(*color[state])
-        
+
         x, y = agent['position']
-        x = (x / display[0]) * 2 - 1
-        y = (y / display[1]) * 2 - 1
+        x = (x / agent_bounds[0]) * 2 - 1
+        y = (y / agent_bounds[1]) * 2 - 1
         glVertex3f(x, y, 0)
     glEnd()
 
