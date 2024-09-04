@@ -8,107 +8,98 @@ import random
 from config import Config
 
 class SimulationEngine:
-    def __init__(self, bounds=(100, 100), num_nodes = 5, num_poles = 3, params=None):
+    def __init__(self, bounds=(800, 800), params=None):
         self.bounds = bounds
-        self.center = np.array(self.bounds) / 2
-        self.agents = []
+        self.agents = np.zeros(bounds)
         self.running = False
         self.params = params
         if self.params is None:
             self.params = Config.SIMULATION_PARAMS
-        self.generate_nodes_and_poles(num_nodes, num_poles)
+        self.x = max(0, self.agents.shape[0] // 2)
+        self.y = max(0, self.agents.shape[1] // 2)
         self.lock = threading.Lock()
 
+    
 
-    def normalize_coord_list(self, coord_list):
-        if isinstance(coord_list, list):
-            coord_list = np.array(coord_list)
-        
-        ans = []
-        for coord in coord_list:
-            x, y = coord[0], coord[1]
-            x = (x / self.bounds[0] * 2 - 1)
-            y = (y / self.bounds[1] * 2 - 1)
-            ans.append([x, y])
-
-        return np.array(ans)
-
-    def generate_nodes_and_poles(self, num_nodes=5, num_poles=3):
-        self.nodes = []
-        self.poles = []
-        # for _ in range(num_nodes):
-        #     self.nodes.append((random.randint(0, self.bounds[0]), random.randint(0, self.bounds[1])))
-        # for _ in range(num_poles):
-        #     self.poles.append((random.randint(0, self.bounds[0]), random.randint(0, self.bounds[1])))
-
-        #hard coding star shaped pattern
-        # self.nodes = np.array([(386, 29), (132,190), (568, 190)])
-        # self.poles = np.array([(568, 461), (568, 190), (132,190)])
-
-        radius =   min(self.bounds)   # Distance from the center to each point
-        num_points = 3  # Number of points for the star
-        center = self.center
-        # Generate points for nodes and poles
-        angles = np.linspace(0, 2 * np.pi, num_points, endpoint=False)
-        
-        # self.nodes = np.array([(center[0] + radius * np.cos(angle), 
-                        # center[1] + radius * np.sin(angle)) for angle in angles])
-        self.nodes = [center]
-        # Optionally, generate poles at different radii or with an offset
-        self.poles = np.array([(center[0] + (radius/2) * np.cos(angle), 
-                        center[1] + (radius/2) * np.sin(angle)) for angle in angles])
-
-
-    def initialize_agents(self, num_agents=50):
-        for _ in range(num_agents):
-            # position = np.random.uniform(0, self.bounds[0], size=2)
-            position = self.center
-            angle = random.uniform(0, 2 * np.pi)
-            velocity = np.array([np.cos(angle), np.sin(angle)]) * self.params['max_speed']
-            agent = Agent(position, velocity)
-            self.agents.append(agent)
+    def initialize_agents(self, num_agents=4):
+        i = -1
+        while i < num_agents:
+            i += 1
+            self.agents[self.x, self.y] = Agent()
+            if i % 4 == 0:
+                self.x += 1
+            if i % 4 == 1:
+                self.y += 1
+            if i % 4 == 2:
+                self.x -= 1
+            if i % 4 == 3:
+                self.y -= 1
+                
 
     def update(self):
+        agent:Agent
         with self.lock:
-            if len(self.agents) < 0.1* self.params['num_agents']:
-                self.initialize_agents(num_agents= int(0.5 *self.params['num_agents']))
-            new_agents = []
-            i = 0
-            while i < len(self.agents):
-                agent:Agent = self.agents[i]
-                agent.age += 1
-                if agent.age > agent.lifespan:
-                    self.agents.pop(i)
-                    continue
-                agent.apply_flocking(self.agents, self.params)
-                agent.update_position(self.bounds)
-                if len(self.agents) < Config.SIMULATION_PARAMS['max_agents']:
-                    new_agent = agent.reproduce(self.agents, self.params)
-                    if new_agent:
-                        new_agents.append(new_agent)
-                agent.assign_task(self.nodes, self.poles, self.params)
-                agent.perform_task(self.nodes, self.poles, self.params)
-                i += 1
-            self.agents.extend(new_agents)
+            for i in range(len(self.agents.shape[0])):
+                for j in range(len(self.agents.shape[1])):
+                    agent = self.agents[i, j]
+                    # from https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life
+                        
+                    i_min = i
+                    j_min = j
+                    if i > 0:
+                        i_min = i - 1
+                    if j > 0:
+                        j_min = j - 1
+
+                    i_max = i
+                    j_max = j
+                    if i < self.agents.shape[0] - 1:
+                        i_max = i + 1
+                    if j < self.agents.shape[1] - 1:
+                        j_max = j + 1
+                    
+                    i_tests = [i_min, i, i_max]
+                    j_tests = [j_min, j, j_max]
+
+                    neighbors = 0
+                    for i_test in i_tests:
+                        for j_test in j_tests:
+                            if i_test == i and j_test == j:
+                                continue
+                            if self.agents[i_test, j_test].state == 'alive':
+                                neighbors += 1
+                    # Any live cell with fewer than two live neighbours dies, as if by underpopulation.
+                    # Any live cell with more than three live neighbours dies, as if by overpopulation.
+                    # Any live cell with two or three live neighbours lives on to the next generation.
+                    if neighbors < 2 or neighbors > 3:
+                        agent.state = 'dead'
+                        
+                    # Any dead cell with exactly three live neighbours becomes a live cell, as if by reproduction.
+                    if neighbors == 3:
+                        agent.state = 'alive'
+                        
+                    
 
     def get_state(self):
+        agent:Agent
         with self.lock:
             # return {
             #     'agents': self.agents
             # }
 
-            # the statement below returns a list of dictionaries based on the agent properties.  however, rest of app is expecting list of agents.
-            return [
-                {
-                    'id': agent.id,
-                    'position': agent.position.tolist(),
-                    'velocity': agent.velocity.tolist(),
-                    'state': agent.state,
-                    'task': agent.task,
-                    'color': agent.color,
-                }
-                for agent in self.agents
-            ]
+            # the statement below returns a list of dictionaries based on the agent properties.  this works well with a web application that can't 
+            # jsonify a custom class.
+            ans = []
+            for i in range(len(self.agents.shape[0])):
+                for j in range(len(self.agents.shape[1])):
+                    agent = self.agents[i, j]
+                    ans.append({
+                        'id': agent.id,
+                        'position': [i, j],
+                        'state': agent.state,
+                        'color': agent.color,
+                    })
+            return ans
 
     def run(self, update_interval=0.1):
         self.running = True

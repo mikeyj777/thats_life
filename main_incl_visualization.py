@@ -6,13 +6,9 @@ from pygame.locals import *
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from simulation.engine import SimulationEngine
-from view.visualization_pyopengl import Visualization
 from config import Config
 
 import logging
-
-num_nodes = 2
-num_poles = 1
 
 
 pygame.init()
@@ -31,8 +27,8 @@ glPointSize(10)
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Initialize Simulation Engine
-engine = SimulationEngine(bounds=display, num_nodes=num_nodes, num_poles=num_poles)
-engine.initialize_agents(num_agents=Config.SIMULATION_PARAMS['num_agents'])
+engine = SimulationEngine(bounds=display)
+engine.initialize_agents()
 
 
 logging.info('Simulation thread started')
@@ -47,7 +43,6 @@ while engine.running:
     glBegin(GL_POINTS)
     for agent in agents:
         glColor3f(*agent['color'])
-        x, y = agent['position']
         x = (x / display[0]) * 2 - 1
         y = (y / display[1]) * 2 - 1
         glVertex3f(x, y, 0)

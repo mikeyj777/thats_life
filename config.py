@@ -21,7 +21,7 @@ class Config:
             (0, 255, 255),
             (255, 0, 255),
         ],
-        'num_agents': 25,
+        'num_agents': 4,
         'agent_types': ['worker', 'idler'],
         'max_agents': np.inf,
         'resolution': (800, 800),
