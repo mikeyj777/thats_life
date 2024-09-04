@@ -42,7 +42,11 @@ while engine.running:
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)  # Clear the screen
     glBegin(GL_POINTS)
     for agent in agents:
-        glColor3f(*agent['color'])
+        color = agent['color']
+        state = agent['state']
+        glColor3f(*color[state])
+        
+        x, y = agent['position']
         x = (x / display[0]) * 2 - 1
         y = (y / display[1]) * 2 - 1
         glVertex3f(x, y, 0)
