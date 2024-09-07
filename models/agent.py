@@ -17,6 +17,7 @@ class Agent:
         color = random.choice(colors)
         color = np.array(color, dtype=float)
         color /= 255
+        # color = (1, 1, 1)
         self.color = {
             'alive': color,
             'dead': (0, 0, 0)

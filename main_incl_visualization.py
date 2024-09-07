@@ -29,16 +29,16 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 # Initialize Simulation Engine
 agent_bounds = (100,100)
 engine = SimulationEngine(bounds=agent_bounds)
+# engine.initialize_agents_predefined_patters()
 engine.initialize_agents(num_agents=Config.SIMULATION_PARAMS['num_agents'])
 
 
 logging.info('Simulation thread started')
 
 engine.running = True
+agents = engine.get_state()
+pygame.time.wait(100)
 while engine.running:
-
-    engine.update()
-    agents = engine.get_state()
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)  # Clear the screen
     glBegin(GL_POINTS)
@@ -57,6 +57,9 @@ while engine.running:
     pygame.time.wait(10)  # Add a short delay to control the frame rate
     # logging.debug(f'State retrieved\n\n\n')
     # Ensure state contains 'agents' and it's an array
+
+    engine.update()
+    agents = engine.get_state()
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
