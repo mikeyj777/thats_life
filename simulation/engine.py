@@ -10,7 +10,7 @@ from config import Config
 class SimulationEngine:
     def __init__(self, bounds=(800, 800), params=None):
         self.bounds = bounds
-        self.agents = np.zeros(bounds, dtype=Agent)
+        self.agents = np.full(bounds, None, dtype=object)
         self.running = False
         self.params = params
         if self.params is None:
@@ -20,10 +20,13 @@ class SimulationEngine:
         # self.x = 0
         # self.y = 0
         self.lock = threading.Lock()
+        self.age_oldest_agent = -1
 
     def place_pattern(self, grid, pattern, x_offset=0, y_offset=0):
         for (x, y) in pattern:
-            grid[x + x_offset, y + y_offset] = 1
+            if isinstance(grid[x + x_offset, y + y_offset], Agent):
+                continue
+            grid[x + x_offset, y + y_offset] = Agent()
         
         return grid
 
@@ -34,13 +37,13 @@ class SimulationEngine:
         blinker = [(0, 1), (1, 1), (2, 1)]
 
         # Grid setup
-        grid_size = 20
-        grid = np.zeros((grid_size, grid_size), dtype=int)
+        grid_size = 100
+        grid = np.full((grid_size, grid_size), None, dtype=object)
 
         # Place patterns at different locations
-        grid = self.place_pattern(grid, glider, x_offset=5, y_offset=5)
-        grid = self.place_pattern(grid, block, x_offset=10, y_offset=10)
-        grid = self.place_pattern(grid, blinker, x_offset=15, y_offset=15)
+        grid = self.place_pattern(grid, glider, x_offset=50, y_offset=50)
+        # grid = self.place_pattern(grid, block, x_offset=10, y_offset=10)
+        # grid = self.place_pattern(grid, blinker, x_offset=15, y_offset=15)
 
         self.agents[0:grid.shape[0], 0:grid.shape[1]] = grid
 
@@ -73,77 +76,48 @@ class SimulationEngine:
             if isinstance(self.agents[x, y], Agent):
                 continue
             self.agents[x, y] = Agent()
-            print(x, y)
             
                 
         apple = 1
 
     def update(self):
-        agent:Agent
+        agent: Agent
         with self.lock:
             living = 0
             agent_count = 0
-            i = self.x
-            j = self.y
-            first_pass = True
-            while i < self.agents.shape[0]:
-                while j < self.agents.shape[1]:
-                
+            for i in range(self.agents.shape[0]):
+                for j in range(self.agents.shape[1]):
                     agent = self.agents[i, j]
-                    # from https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life
-                        
-                    i_min = i
-                    j_min = j
-                    if i > 0:
-                        i_min = i - 1
-                    if j > 0:
-                        j_min = j - 1
-
-                    i_max = i
-                    j_max = j
-                    if i < self.agents.shape[0] - 1:
-                        i_max = i + 1
-                    if j < self.agents.shape[1] - 1:
-                        j_max = j + 1
-                    
-                    i_tests = [i_min, i, i_max]
-                    j_tests = [j_min, j, j_max]
-
-                    neighbors = 0
-                    for i_test in i_tests:
-                        for j_test in j_tests:
-                            if i_test == i and j_test == j:
-                                continue
-                            if isinstance(self.agents[i_test, j_test], Agent):
-                                if self.agents[i_test, j_test].state == 'alive':
-                                    neighbors += 1
-                    # Any live cell with fewer than two live neighbours dies, as if by underpopulation.
-                    # Any live cell with more than three live neighbours dies, as if by overpopulation.
-                    # Any live cell with two or three live neighbours lives on to the next generation.
-                    if neighbors < 2 or neighbors > 3:
-                        if isinstance(agent, Agent):
-                            self.agents[i, j].state = 'dead'
-                        
-                    # Any dead cell with exactly three live neighbours becomes a live cell, as if by reproduction.
-                    if neighbors == 3:
-                        if isinstance(agent, int):
+                    if agent is None:
+                        # Check if a new Agent should be born here
+                        neighbors = self.count_live_neighbors(i, j)
+                        if neighbors == 3:
                             self.agents[i, j] = Agent()
-                        self.agents[i, j].state = 'alive'
-                    
-                    
-                    if isinstance(agent, Agent):
-                        agent_count += 1
-                        if agent.state == 'alive':
+                    else:
+                        # Update existing Agent
+                        neighbors = self.count_live_neighbors(i, j)
+                        if neighbors < 2 or neighbors > 3:
+                            agent.state = 'dead'
+                            agent.age = 0
+                        elif neighbors == 2 or neighbors == 3:
+                            agent.state = 'alive'
+                            agent.age += 1
                             living += 1
-                    
-                    j += 1
-                    
-                j = 0
-                i += 1
-                if i >= self.agents.shape[0] and first_pass:
-                    i = 0
-                    first_pass = False
-            # print(f'living: {living} of {agent_count}')
+                            if agent.age > self.age_oldest_agent:
+                                self.age_oldest_agent = agent.age
+                            agent.set_color(self.age_oldest_agent)
+                        agent_count += 1
+
+    def count_live_neighbors(self, i, j):
+        neighbors = 0
+        for di in [-1, 0, 1]:
+            for dj in [-1, 0, 1]:
+                if di == 0 and dj == 0:
+                    continue
+                ni, nj = (i + di) % self.agents.shape[0], (j + dj) % self.agents.shape[1]
+                if isinstance(self.agents[ni, nj], Agent) and self.agents[ni, nj].state == 'alive':
+                    neighbors += 1
+        return neighbors
 
     def get_state(self):
         agent:Agent
@@ -158,7 +132,7 @@ class SimulationEngine:
             for i in range(self.agents.shape[0]):
                 for j in range(self.agents.shape[1]):
                     agent = self.agents[i, j]
-                    if isinstance(agent, int):
+                    if agent is None:
                         continue
                     ans.append({
                         'id': agent.id,

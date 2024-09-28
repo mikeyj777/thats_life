@@ -29,8 +29,8 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 # Initialize Simulation Engine
 agent_bounds = (100,100)
 engine = SimulationEngine(bounds=agent_bounds)
-# engine.initialize_agents_predefined_patters()
-engine.initialize_agents(num_agents=Config.SIMULATION_PARAMS['num_agents'])
+engine.initialize_agents_predefined_patters()
+# engine.initialize_agents(num_agents=Config.SIMULATION_PARAMS['num_agents'])
 
 
 logging.info('Simulation thread started')
