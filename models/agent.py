@@ -1,7 +1,6 @@
 # backend/models/agent.py
 import numpy as np
 import uuid
-import random
 from config import Config
 
 class Agent:
@@ -10,7 +9,7 @@ class Agent:
         self.state = 'alive'
         self.age = 0
         self.height = 0.0
-        self.set_color_and_age()
+        self.set_color_and_height()
 
     def set_color_and_height(self, oldest_agent = 1):
         colors = Config.SIMULATION_PARAMS['colors']
@@ -24,7 +23,4 @@ class Agent:
             'alive': color,
             'dead': (0, 0, 0)
         }
-        self.height = agent_color_phase
-
-
-    
+        self.height = self.age / oldest_agent  # Normalize height based on age

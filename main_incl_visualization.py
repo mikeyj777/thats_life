@@ -6,6 +6,7 @@ from pygame.locals import *
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from simulation.engine import SimulationEngine
+from view.renderer import Renderer
 from config import Config
 
 import logging
