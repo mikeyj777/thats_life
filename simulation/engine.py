@@ -1,152 +1,90 @@
-# backend/simulation/engine.py
+# simulation/engine.py
 
-import time
-import threading
-from models.agent import Agent
 import numpy as np
-import random
 from config import Config
+from models.agent import Agent
+import threading
 
 class SimulationEngine:
-    def __init__(self, bounds=(800, 800), params=None):
-        self.bounds = bounds
-        self.agents = np.full(bounds, None, dtype=object)
-        self.running = False
-        self.params = params
-        if self.params is None:
-            self.params = Config.SIMULATION_PARAMS
-        self.x = max(0, int(self.agents.shape[0] // 2))
-        self.y = max(0, int(self.agents.shape[1] // 2))
-        # self.x = 0
-        # self.y = 0
+    def __init__(self):
+        self.width, self.height = Config.SIMULATION_PARAMS['resolution']
+        self.agents = np.empty((self.width, self.height), dtype=object)
+        self.x = 0
+        self.y = 0
         self.lock = threading.Lock()
-        self.age_oldest_agent = -1
+        self.max_age = -1
+        self.initialize_agents()
 
-    def place_pattern(self, grid, pattern, x_offset=0, y_offset=0):
-        for (x, y) in pattern:
-            if isinstance(grid[x + x_offset, y + y_offset], Agent):
-                continue
-            grid[x + x_offset, y + y_offset] = Agent()
-        
-        return grid
-
-    def initialize_agents_predefined_patters(self):
-        # Example patterns
-        glider = [(0, 1), (1, 2), (2, 0), (2, 1), (2, 2)]
-        block = [(0, 0), (0, 1), (1, 0), (1, 1)]
-        blinker = [(0, 1), (1, 1), (2, 1)]
-
-        # Grid setup
-        grid_size = 100
-        grid = np.full((grid_size, grid_size), None, dtype=object)
-
-        # Place patterns at different locations
-        grid = self.place_pattern(grid, glider, x_offset=50, y_offset=50)
-        # grid = self.place_pattern(grid, block, x_offset=10, y_offset=10)
-        # grid = self.place_pattern(grid, blinker, x_offset=15, y_offset=15)
-
-        self.agents[0:grid.shape[0], 0:grid.shape[1]] = grid
-
-    def initialize_agents(self, num_agents=4):
-        i = 0
-        x = self.x
-        y = self.y
-        while i < num_agents:
-            i += 1
-            increment = 1
-            if i % 4 == 1 and i >= 5:
-                increment += 1
-            if i % 4 == 0:
-                x += increment
-            if i % 4 == 1:
-                y += increment
-            if i % 4 == 2:
-                x -= increment
-            if i % 4 == 3:
-                y -= increment
-
-            if x >= self.agents.shape[0]:
-                x = 0
-            if y >= self.agents.shape[1]:
-                y = 0
-            if x < 0:
-                x = self.agents.shape[0] - 1
-            if y < 0:
-                y = self.agents.shape[1] - 1
-            if isinstance(self.agents[x, y], Agent):
-                continue
-            self.agents[x, y] = Agent()
-            
-                
-        apple = 1
+    def initialize_agents(self):
+        for i in range(self.width):
+            for j in range(self.height):
+                if np.random.random() < 0.2:  # 20% chance of being alive initially
+                    self.agents[i, j] = Agent(state='alive')
+                else:
+                    self.agents[i, j] = None
 
     def update(self):
-        agent: Agent
         with self.lock:
             living = 0
             agent_count = 0
-            for i in range(self.agents.shape[0]):
-                for j in range(self.agents.shape[1]):
+            i = 0
+            j = 0
+            while i < self.agents.shape[0]:
+                while j < self.agents.shape[1]:
                     agent = self.agents[i, j]
-                    if agent is None:
-                        # Check if a new Agent should be born here
-                        neighbors = self.count_live_neighbors(i, j)
-                        if neighbors == 3:
-                            self.agents[i, j] = Agent()
-                    else:
-                        # Update existing Agent
-                        neighbors = self.count_live_neighbors(i, j)
-                        if neighbors < 2 or neighbors > 3:
+                    
+                    i_min = max(i - 1, 0)
+                    j_min = max(j - 1, 0)
+                    i_max = min(i + 1, self.agents.shape[0] - 1)
+                    j_max = min(j + 1, self.agents.shape[1] - 1)
+                    
+                    i_tests = [i_min, i, i_max]
+                    j_tests = [j_min, j, j_max]
+                    neighbors = 0
+                    for i_test in i_tests:
+                        for j_test in j_tests:
+                            if i_test == i and j_test == j:
+                                continue
+                            if isinstance(self.agents[i_test, j_test], Agent):
+                                if self.agents[i_test, j_test].state == 'alive':
+                                    neighbors += 1
+                    
+                    if neighbors < 2 or neighbors > 3:
+                        if isinstance(agent, Agent):
                             agent.state = 'dead'
                             agent.age = 0
-                        elif neighbors == 2 or neighbors == 3:
-                            agent.state = 'alive'
+                    elif neighbors == 3 or (isinstance(agent, Agent) and agent.state == 'alive'):
+                        if not isinstance(agent, Agent):
+                            self.agents[i, j] = Agent()
+                        self.agents[i, j].state = 'alive'
+                        if isinstance(agent, Agent) and agent.state == 'alive':
                             agent.age += 1
-                            living += 1
-                            if agent.age > self.age_oldest_agent:
-                                self.age_oldest_agent = agent.age
-                            agent.set_color(self.age_oldest_agent)
+                            if agent.age > self.max_age:
+                                self.max_age = agent.age
+                                print(f'max age: {self.max_age} | agent count: {agent_count} | living: {living}')
+                                agent.set_color_and_height(self.max_age)
+                    
+                    if isinstance(agent, Agent):
                         agent_count += 1
+                        if agent.state == 'alive':
+                            living += 1
+                    
+                    j += 1
+                    
+                j = 0
+                i += 1
+                if i >= self.agents.shape[0]:
+                    i = 0
+            
 
-    def count_live_neighbors(self, i, j):
-        neighbors = 0
-        for di in [-1, 0, 1]:
-            for dj in [-1, 0, 1]:
-                if di == 0 and dj == 0:
-                    continue
-                ni, nj = (i + di) % self.agents.shape[0], (j + dj) % self.agents.shape[1]
-                if isinstance(self.agents[ni, nj], Agent) and self.agents[ni, nj].state == 'alive':
-                    neighbors += 1
-        return neighbors
+    def update_agent_colors(self):
+        max_age = max((agent.age for agent in self.agents.flat if isinstance(agent, Agent) and agent.state == 'alive'), default=1)
+        for agent in self.agents.flat:
+            if isinstance(agent, Agent) and agent.state == 'alive':
+                agent.set_color_and_height(max_age)
 
-    def get_state(self):
-        agent:Agent
-        with self.lock:
-            # return {
-            #     'agents': self.agents
-            # }
+    def get_agent(self, i, j):
+        return self.agents[i, j]
 
-            # the statement below returns a list of dictionaries based on the agent properties.  this works well with a web application that can't 
-            # jsonify a custom class.
-            ans = []
-            for i in range(self.agents.shape[0]):
-                for j in range(self.agents.shape[1]):
-                    agent = self.agents[i, j]
-                    if agent is None:
-                        continue
-                    ans.append({
-                        'id': agent.id,
-                        'position': [i, j],
-                        'state': agent.state,
-                        'color': agent.color,
-                    })
-            return ans
-
-    def run(self, update_interval=0.1):
-        self.running = True
-        while self.running:
-            self.update()
-            # time.sleep(update_interval)
-
-    def stop(self):
-        self.running = False
+    def is_alive(self, i, j):
+        return isinstance(self.agents[i, j], Agent) and self.agents[i, j].state == 'alive'
