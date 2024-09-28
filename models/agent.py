@@ -4,10 +4,10 @@ import uuid
 from config import Config
 
 class Agent:
-    def __init__(self):
-        self.id = str(uuid.uuid4())
-        self.state = 'alive'
+    def __init__(self, state='dead'):
+        self.state = state
         self.age = 0
+        self.color = {'alive': (1.0, 1.0, 1.0), 'dead': (0.0, 0.0, 0.0)}
         self.height = 0.0
         self.set_color_and_height()
 

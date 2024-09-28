@@ -1,19 +1,23 @@
-# backend/simulation/engine.py
+# simulation/engine.py
 
+import time
 import threading
 from models.agent import Agent
 import numpy as np
 from config import Config
-import logging
 
 class SimulationEngine:
-    def __init__(self, bounds=(100, 100), params=None):
+    def __init__(self, bounds=(800, 800), params=None):
         self.bounds = bounds
         self.agents = np.full(bounds, None, dtype=object)
         self.running = False
-        self.params = params or Config.SIMULATION_PARAMS
+        self.params = params
+        if self.params is None:
+            self.params = Config.SIMULATION_PARAMS
         self.x = max(0, int(self.agents.shape[0] // 2))
         self.y = max(0, int(self.agents.shape[1] // 2))
+        # self.x = 0
+        # self.y = 0
         self.lock = threading.Lock()
         self.age_oldest_agent = 1
         logging.basicConfig(level=logging.DEBUG)
@@ -26,26 +30,55 @@ class SimulationEngine:
                 self.agents[x, y] = Agent()
         # logging.debug(f"Placed pattern at offset ({x_offset}, {y_offset})")
 
-    def initialize_agents_predefined_patterns(self):
+    def initialize_agents_predefined_patters(self):
         # Example patterns
         glider = [(0, 1), (1, 2), (2, 0), (2, 1), (2, 2)]
         block = [(0, 0), (0, 1), (1, 0), (1, 1)]
         blinker = [(0, 1), (1, 1), (2, 1)]
 
-        # Place patterns
-        self.place_pattern(glider, x_offset=50, y_offset=50)
-        self.place_pattern(blinker, x_offset=10, y_offset=10)
+        # Grid setup
+        grid_size = 100
+        grid = np.full((grid_size, grid_size), None, dtype=object)
 
-        # logging.info(f"Initialized agents with predefined patterns. Grid size: {self.bounds}")
+        # Place patterns at different locations
+        grid = self.place_pattern(grid, glider, x_offset=50, y_offset=50)
+        # grid = self.place_pattern(grid, block, x_offset=10, y_offset=10)
+        # grid = self.place_pattern(grid, blinker, x_offset=15, y_offset=15)
+
+        self.agents[0:grid.shape[0], 0:grid.shape[1]] = grid
 
     def initialize_agents(self, num_agents=4):
-        for _ in range(num_agents):
-            x = np.random.randint(0, self.bounds[0])
-            y = np.random.randint(0, self.bounds[1])
-            if self.agents[x, y] is None:
-                self.agents[x, y] = Agent()
-        
-        # logging.info(f"Initialized {num_agents} random agents")
+        i = 0
+        x = self.x
+        y = self.y
+        while i < num_agents:
+            i += 1
+            increment = 1
+            if i % 4 == 1 and i >= 5:
+                increment += 1
+            if i % 4 == 0:
+                x += increment
+            if i % 4 == 1:
+                y += increment
+            if i % 4 == 2:
+                x -= increment
+            if i % 4 == 3:
+                y -= increment
+
+            if x >= self.agents.shape[0]:
+                x = 0
+            if y >= self.agents.shape[1]:
+                y = 0
+            if x < 0:
+                x = self.agents.shape[0] - 1
+            if y < 0:
+                y = self.agents.shape[1] - 1
+            if isinstance(self.agents[x, y], Agent):
+                continue
+            self.agents[x, y] = Agent()
+            
+                
+        apple = 1
 
     def update(self):
         with self.lock:
