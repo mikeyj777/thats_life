@@ -2,9 +2,12 @@
 
 import time
 import threading
+import logging
 from models.agent import Agent
 import numpy as np
 from config import Config
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class SimulationEngine:
     def __init__(self, bounds=(800, 800), params=None):
@@ -20,17 +23,17 @@ class SimulationEngine:
         # self.y = 0
         self.lock = threading.Lock()
         self.age_oldest_agent = 1
-        logging.basicConfig(level=logging.DEBUG)
 
-    def place_pattern(self, pattern, x_offset=0, y_offset=0):
+    def place_pattern(self, grid, pattern, x_offset=0, y_offset=0):
         for (x, y) in pattern:
             x = (x + x_offset) % self.bounds[0]
             y = (y + y_offset) % self.bounds[1]
-            if self.agents[x, y] is None:
-                self.agents[x, y] = Agent()
+            if grid[x, y] is None:
+                grid[x, y] = Agent()
         # logging.debug(f"Placed pattern at offset ({x_offset}, {y_offset})")
+        return grid
 
-    def initialize_agents_predefined_patters(self):
+    def initialize_agents_predefined_patterns(self):
         # Example patterns
         glider = [(0, 1), (1, 2), (2, 0), (2, 1), (2, 2)]
         block = [(0, 0), (0, 1), (1, 0), (1, 1)]
